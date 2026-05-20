@@ -1,6 +1,6 @@
 # Mermaid Architecture Diagrams
 
-This README renders the four Mermaid `.mmd` architecture diagrams directly in GitHub.
+This README is possible research architecture improvements for the research papers.  
 
 ## 1. Old McClintock Architecture
 
