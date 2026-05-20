@@ -1,0 +1,111 @@
+flowchart TD
+    %% OLD / 2008 BIOLOGICAL TEXT-MINING ARCHITECTURE
+    %% Purpose: make biological literature more accessible by extracting entities, facts, and evidence and linking them to databases/curation.
+
+    A[Core 2008 Problem:<br/>Biological knowledge is locked in papers.<br/>Manual curation is slow and expensive.<br/>How can text mining connect literature to databases?]
+
+    subgraph SOURCES[Information Sources]
+        B1[PubMed titles and abstracts]
+        B2[Full-text articles when available]
+        B3[Biological databases:<br/>UniProt, MGI, OMIM, IntAct, etc.]
+        B4[Controlled vocabularies and ontologies:<br/>Gene Ontology, MeSH, UMLS]
+        B5[Human curators and domain experts]
+    end
+
+    A --> SOURCES
+
+    subgraph ACCESS[Document Access and Preprocessing]
+        C1[Collect relevant papers]
+        C2[Convert documents to processable text<br/>HTML/PDF/XML to text]
+        C3[Split into title, abstract,<br/>sections, paragraphs, sentences]
+        C4[Tokenization and sentence processing]
+        C5[Document metadata:<br/>PMID, DOI, authors, year, journal]
+    end
+
+    SOURCES --> C1 --> C2 --> C3 --> C4 --> C5
+
+    subgraph NER[Named Entity Recognition]
+        D1[Detect gene/protein mentions]
+        D2[Detect chemicals, diseases,<br/>species, phenotypes as future expansion]
+        D3[Use dictionaries, lexicons,<br/>rules, CRFs/SVMs or early ML]
+        D4[Output:<br/>text span + entity type]
+    end
+
+    C4 --> NER
+
+    subgraph NORMALIZE[Entity Normalization / Database Linking]
+        E1[Resolve synonyms and ambiguous names]
+        E2[Map mentions to database IDs:<br/>Entrez Gene, UniProt, GO, MeSH, UMLS]
+        E3[Example:<br/>BRCA1, breast cancer 1, BRCC1<br/>all map to one gene ID]
+        E4[Output:<br/>entity mention + normalized ID]
+    end
+
+    NER --> NORMALIZE
+
+    subgraph RELATIONS[Relation and Fact Extraction]
+        F1[Detect protein-protein interactions]
+        F2[Detect gene-protein links]
+        F3[Detect gene-disease or genotype-phenotype links<br/>as future challenge]
+        F4[Extract simple facts:<br/>A interacts with B,<br/>A is located in B,<br/>A is associated with B]
+        F5[Early approaches:<br/>co-occurrence, patterns,<br/>dependency parsing,<br/>supervised classifiers]
+    end
+
+    NORMALIZE --> RELATIONS
+
+    subgraph EVIDENCE[Evidence Linking]
+        G1[Link extracted fact back to<br/>supporting sentence or passage]
+        G2[Record paper ID and location]
+        G3[Distinguish known, novel,<br/>uncertain, or conflicting findings<br/>as a desired future direction]
+        G4[Help curators inspect source evidence]
+    end
+
+    RELATIONS --> EVIDENCE
+
+    subgraph DATABASES[Database / Ontology Integration]
+        H1[Add links from literature to databases]
+        H2[Attach extracted facts to<br/>curated biological records]
+        H3[Use controlled vocabularies<br/>to make facts computable]
+        H4[Support structured digital abstracts<br/>and metadata-rich publications]
+    end
+
+    EVIDENCE --> DATABASES
+
+    subgraph CURATION[Human Curation Workflow]
+        I1[Curators receive suggested papers]
+        I2[Curators inspect highlighted entities<br/>and evidence sentences]
+        I3[Curators accept/reject/edit annotations]
+        I4[Corrections improve databases<br/>and can create training data]
+    end
+
+    DATABASES --> CURATION
+
+    subgraph INTERFACE[User Interfaces and Applications]
+        J1[Computer-assisted reading tools]
+        J2[Search systems that return<br/>papers, passages, sentences, or facts]
+        J3[Database record pages with<br/>literature evidence links]
+        J4[Automatic summaries and reports<br/>as future direction]
+        J5[Question answering<br/>as future direction]
+    end
+
+    CURATION --> INTERFACE
+
+    subgraph EVALUATION[BioCreative / Challenge Evaluation]
+        K1[Define benchmark tasks]
+        K2[Create gold-standard corpora]
+        K3[Evaluate gene mention recognition]
+        K4[Evaluate gene normalization]
+        K5[Evaluate protein-protein interactions]
+        K6[Compare systems using precision,<br/>recall, F1]
+        K7[Encourage collaboration between<br/>tool developers and biological users]
+    end
+
+    INTERFACE --> EVALUATION
+
+    subgraph MAIN_IDEA[Main 2008 Vision]
+        L1[Text mining should not be isolated]
+        L2[It should be embedded in<br/>larger biological workflows]
+        L3[Publications, databases, curators,<br/>and users should be connected]
+        L4[Goal:<br/>turn free-text literature into<br/>computable biological knowledge]
+    end
+
+    EVALUATION --> MAIN_IDEA

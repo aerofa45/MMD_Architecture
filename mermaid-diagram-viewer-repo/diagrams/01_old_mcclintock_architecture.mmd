@@ -1,0 +1,111 @@
+flowchart TD
+    %% OLD / ORIGINAL McCLINTOCK-STYLE ARCHITECTURE
+    %% Purpose: run multiple short-read TE insertion detectors, standardize outputs, compare predictions.
+
+    A[Research Question:<br/>Where are transposable element insertions<br/>in a resequenced genome sample?]
+
+    subgraph INPUTS[Input Data]
+        B1[Reference Genome FASTA<br/>Example: sacCer2 yeast genome]
+        B2[TE Consensus FASTA<br/>Known TE family sequences<br/>Example: Ty1, Ty2, Ty3, Ty4]
+        B3[Reference TE Locations GFF<br/>Known TEs already present<br/>in the reference genome]
+        B4[TE Family Mapping TSV<br/>Reference TE ID to TE family]
+        B5[FASTQ Reads<br/>Short-read WGS sample<br/>single-end or paired-end]
+    end
+
+    A --> INPUTS
+
+    subgraph PREP[Preprocessing and Setup]
+        C1[Check Input Files<br/>valid contig names, TE IDs, family IDs]
+        C2[If GFF/TSV not supplied:<br/>Run RepeatMasker to create<br/>reference TE locations and taxonomy]
+        C3[Optional TrimGalore/FastQC<br/>adapter trimming and read QC]
+        C4[Prepare method-specific input files<br/>because each TE detector expects<br/>different formats]
+    end
+
+    INPUTS --> C1 --> C2 --> C3 --> C4
+
+    subgraph ALIGN[Read Alignment Layer]
+        D1[Map reads to reference genome<br/>using aligner required by methods]
+        D2[Create SAM/BAM alignment files]
+        D3[Extract mapping statistics:<br/>read length, insert size,<br/>coverage, mapped read counts]
+    end
+
+    C4 --> D1 --> D2 --> D3
+
+    subgraph EVIDENCE[Biological Evidence in BAM]
+        E1[Split-read evidence<br/>read crosses genome-TE breakpoint<br/>high positional accuracy]
+        E2[Read-pair evidence<br/>one mate near breakpoint,<br/>other mate maps unexpectedly/TE-like<br/>higher sensitivity]
+        E3[Soft-clipped reads<br/>part of read maps, part does not]
+        E4[Read depth / coverage<br/>supports TE copy-number or abundance]
+        E5[Target-site duplication clues<br/>short duplicated sequence near insertion]
+    end
+
+    D2 --> EVIDENCE
+
+    subgraph METHODS[Component TE Detection Methods]
+        F1[ngs_te_mapper]
+        F2[ngs_te_mapper2]
+        F3[PoPoolationTE]
+        F4[PoPoolationTE2]
+        F5[RelocaTE]
+        F6[RelocaTE2]
+        F7[RetroSeq]
+        F8[TEBreak]
+        F9[TEFLoN]
+        F10[TE-locate]
+        F11[TEMP]
+        F12[TEMP2]
+        F13[Coverage Module<br/>normalized TE coverage plots<br/>and TE depth summaries]
+    end
+
+    EVIDENCE --> METHODS
+
+    subgraph RAWOUT[Raw Method Outputs]
+        G1[Raw BED/GFF/VCF/table files<br/>method-specific coordinates<br/>method-specific support values]
+        G2[Reference TE predictions<br/>if supported by method]
+        G3[Non-reference TE predictions<br/>new sample-specific insertions]
+        G4[Different coordinate conventions<br/>0-based vs 1-based,<br/>single point vs interval,<br/>TSD vs breakpoint]
+    end
+
+    METHODS --> RAWOUT
+
+    subgraph POST[Post-processing and Standardization]
+        H1[Apply method-specific filters<br/>support thresholds, frequency thresholds,<br/>both-end support, breakpoint confidence]
+        H2[Convert coordinates<br/>to standardized 0-based BED intervals]
+        H3[Create standardized VCF<br/>for non-reference TE calls]
+        H4[Mark prediction type:<br/>reference or non-reference]
+        H5[Attach TE family and method name]
+        H6[Remove redundant predictions<br/>within each method]
+    end
+
+    RAWOUT --> H1 --> H2 --> H3 --> H4 --> H5 --> H6
+
+    subgraph SUMMARY[Summary and Comparison]
+        I1[Summary table by method:<br/>ALL, REFERENCE, NON-REFERENCE]
+        I2[Summary table by TE family:<br/>Ty1, Ty2, Ty3, Ty4, etc.]
+        I3[Prediction pages by contig/chromosome]
+        I4[Coverage reports for TE families]
+        I5[Interactive HTML report<br/>run command, QC, mapping stats,<br/>method predictions]
+    end
+
+    H6 --> SUMMARY
+
+    subgraph EVALUATION[Paper Evaluation Design]
+        J1[Simulated yeast genomes<br/>insert one artificial TE at known location]
+        J2[Simulate WGS reads with known truth]
+        J3[Run McClintock]
+        J4[Evaluate detection:<br/>exact TSD, within 100 bp,<br/>within 300 bp, within 500 bp]
+        J5[Real yeast WGS strains]
+        J6[Check biological validity:<br/>Ty insertions near tRNA genes,<br/>TE family activity,<br/>target-site duplication patterns]
+    end
+
+    SUMMARY --> EVALUATION
+
+    subgraph MAIN_FINDINGS[Main Findings / Meaning]
+        K1[No single TE detector is best<br/>for all cases]
+        K2[Split-read methods:<br/>fewer calls but more precise breakpoints]
+        K3[Read-pair methods:<br/>more sensitive but less precise]
+        K4[Combining methods improves coverage<br/>of biologically realistic insertions]
+        K5[McClintock lowers the barrier<br/>to running and comparing TE detectors]
+    end
+
+    EVALUATION --> MAIN_FINDINGS

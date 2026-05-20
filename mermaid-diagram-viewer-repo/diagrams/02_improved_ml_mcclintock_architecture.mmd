@@ -1,0 +1,165 @@
+flowchart TD
+    %% IMPROVED / MODERN ML-ENHANCED McCLINTOCK ARCHITECTURE
+    %% Purpose: keep McClintock as detector orchestrator, add ML evidence integration and optional agent/workflow layer.
+
+    A[Modern Research Question:<br/>Can ML learn to combine complementary TE-detector outputs<br/>and BAM/read evidence to improve TE insertion confidence,<br/>filtering, ranking, and breakpoint interpretation?]
+
+    subgraph INPUTS[Input Data]
+        B1[Reference Genome FASTA]
+        B2[TE Consensus FASTA<br/>known TE family sequences]
+        B3[Reference TE GFF and TE Family TSV]
+        B4[FASTQ Reads or precomputed BAM]
+        B5[Optional benchmark truth:<br/>simulated insertions,<br/>validated insertions,<br/>high-confidence real calls]
+    end
+
+    A --> INPUTS
+
+    subgraph ORCH[Workflow Orchestration Layer]
+        C1[McClintock/Snakemake runner<br/>runs many TE detectors reproducibly]
+        C2[Optional modern controller<br/>LangGraph-style or Python workflow manager<br/>selects methods, launches jobs,<br/>tracks outputs, makes reports]
+        C3[Experiment tracking<br/>sample ID, reference version,<br/>TE library version, detector versions]
+    end
+
+    INPUTS --> C1
+    INPUTS --> C2
+    C1 --> C3
+    C2 --> C3
+
+    subgraph DETECTORS[Existing TE Detectors as Expert Tools]
+        D1[ngs_te_mapper / ngs_te_mapper2]
+        D2[RelocaTE / RelocaTE2]
+        D3[TEMP / TEMP2]
+        D4[RetroSeq]
+        D5[PoPoolationTE / PoPoolationTE2]
+        D6[TEFLoN]
+        D7[TEBreak]
+        D8[TE-locate]
+    end
+
+    C1 --> DETECTORS
+
+    subgraph STD[Standardized Candidate Generation]
+        E1[Raw detector outputs]
+        E2[Post-process and filter each detector]
+        E3[Standardize to BED/VCF]
+        E4[Merge nearby calls into candidate TE sites]
+        E5[Candidate table:<br/>candidate_id, chr, start, end,<br/>TE family, methods supporting,<br/>reference/non-reference status]
+    end
+
+    DETECTORS --> E1 --> E2 --> E3 --> E4 --> E5
+
+    subgraph BAMFEAT[BAM / Read Evidence Extraction Around Each Candidate]
+        F1[Define fixed genomic window<br/>example: candidate position ±500 bp]
+        F2[Fetch reads overlapping window<br/>using BAM/samtools/pysam]
+        F3[Compute split-read support]
+        F4[Compute discordant read-pair support]
+        F5[Compute soft-clipped read count]
+        F6[Compute read depth and coverage shape]
+        F7[Compute mapping quality statistics]
+        F8[Compute strand balance]
+        F9[Compute TE-family support<br/>reads/mates aligning to TE consensus]
+        F10[Compute breakpoint agreement<br/>how close different methods are]
+        F11[Compute distance to known/reference TE]
+        F12[Compute TSD-related features<br/>if available]
+    end
+
+    E5 --> F1 --> F2
+    F2 --> F3
+    F2 --> F4
+    F2 --> F5
+    F2 --> F6
+    F2 --> F7
+    F2 --> F8
+    F2 --> F9
+    E5 --> F10
+    E5 --> F11
+    F2 --> F12
+
+    subgraph LABELS[Label Construction]
+        G1[Simulation truth labels<br/>known inserted TE location and family]
+        G2[Real validated labels<br/>PCR/long-read/curated insertions]
+        G3[Consensus pseudo-labels<br/>high-confidence agreement from multiple tools]
+        G4[Negative examples:<br/>random genomic sites,<br/>low-support calls, hard negatives near repeats]
+        G5[Final label table:<br/>true insertion / false positive,<br/>TE family, breakpoint tolerance]
+    end
+
+    B5 --> LABELS
+    E5 --> LABELS
+
+    subgraph TABLEMODEL[Stage 1: Interpretable Tabular ML Baseline]
+        H1[Feature table per candidate:<br/>tool agreement + BAM numerical features]
+        H2[XGBoost / Random Forest / Logistic Regression]
+        H3[Output:<br/>true insertion probability,<br/>feature importance,<br/>calibrated confidence]
+    end
+
+    F3 --> H1
+    F4 --> H1
+    F5 --> H1
+    F6 --> H1
+    F7 --> H1
+    F8 --> H1
+    F9 --> H1
+    F10 --> H1
+    F11 --> H1
+    F12 --> H1
+    G5 --> H2
+    H1 --> H2 --> H3
+
+    subgraph DEEPINPUTS[Stage 2: Fixed-size Deep Learning Inputs]
+        I1[Read-pileup tensor:<br/>N reads x W positions x C channels]
+        I2[Channels:<br/>A/C/G/T, base quality,<br/>mapQ, soft-clip flag,<br/>mismatch flag, strand,<br/>indel flag, mate-discordant flag,<br/>TE-support flag]
+        I3[Read-token sequence:<br/>one token per read or read-pair<br/>features include start/end, strand,<br/>mapQ, soft-clip length, insert size,<br/>mate location, TE score]
+        I4[Numeric feature vector:<br/>same interpretable evidence from Stage 1]
+    end
+
+    F2 --> I1 --> I2
+    F2 --> I3
+    H1 --> I4
+
+    subgraph HYBRID[Stage 3: Hybrid ML/DL Evidence Integrator]
+        J1[CNN branch over read-pileup tensor<br/>learns local breakpoint/coverage patterns]
+        J2[Transformer branch over read tokens<br/>learns relationships among reads,<br/>mates, positions, and TE evidence]
+        J3[MLP branch over numeric features<br/>keeps interpretable BAM/tool evidence]
+        J4[Concatenate embeddings<br/>CNN vector + Transformer vector + numeric vector]
+        J5[Final MLP classifier/ranker]
+        J6[Outputs:<br/>true/false TE call,<br/>confidence score,<br/>TE family probability,<br/>breakpoint confidence]
+    end
+
+    I1 --> J1
+    I3 --> J2
+    I4 --> J3
+    J1 --> J4
+    J2 --> J4
+    J3 --> J4
+    G5 --> J5
+    J4 --> J5 --> J6
+
+    subgraph COMPARE[Evaluation and Comparison]
+        K1[Compare against individual TE detectors]
+        K2[Compare against simple consensus voting]
+        K3[Compare against original McClintock summary]
+        K4[Metrics:<br/>precision, recall, F1, PR-AUC,<br/>ROC-AUC, false-positive reduction,<br/>breakpoint distance error,<br/>confidence calibration]
+        K5[Ablations:<br/>tool features only,<br/>BAM features only,<br/>CNN only, Transformer only,<br/>full hybrid]
+        K6[Generalization tests:<br/>simulation to real,<br/>strain to strain,<br/>TE family to TE family,<br/>coverage/read-length differences]
+    end
+
+    H3 --> COMPARE
+    J6 --> COMPARE
+
+    subgraph REPORT[Final User-Facing Output]
+        L1[Ranked TE insertion calls]
+        L2[Each call includes:<br/>chr, start, end, TE family,<br/>reference/non-reference,<br/>detectors supporting,<br/>ML confidence,<br/>main evidence features]
+        L3[HTML/interactive report:<br/>method comparison, ML ranking,<br/>evidence plots, suspicious false positives]
+        L4[Curator/researcher review:<br/>accept, reject, inspect BAM pileup]
+    end
+
+    COMPARE --> REPORT
+
+    subgraph NOVELTY[Research Contribution]
+        M1[Do not replace TE detectors]
+        M2[Use TE detectors as expert evidence generators]
+        M3[Learn how to combine split-read,<br/>read-pair, soft-clip, coverage,<br/>tool-agreement, and TE-family signals]
+        M4[Goal: better prioritization,<br/>filtering, and confidence scoring]
+    end
+
+    REPORT --> NOVELTY

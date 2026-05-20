@@ -1,0 +1,160 @@
+flowchart TD
+    %% MODERN VERSION OF THE 2008 BIOLOGICAL TEXT-MINING VISION
+    %% Purpose: evidence-aware biomedical literature mining + ontology-grounded knowledge graph + GraphRAG + curator feedback.
+
+    A[Modern Research Question:<br/>Can we turn biomedical literature into<br/>evidence-grounded, ontology-linked,<br/>searchable knowledge while reducing hallucination<br/>and supporting human curation?]
+
+    subgraph DATA[Data Sources]
+        B1[PubMed abstracts]
+        B2[PubMed Central full text]
+        B3[PDF papers]
+        B4[Supplementary files]
+        B5[Tables and figure captions]
+        B6[Biological databases:<br/>UniProt, NCBI Gene, OMIM, IntAct]
+        B7[Ontologies/vocabularies:<br/>UMLS, MeSH, Gene Ontology, HGNC]
+    end
+
+    A --> DATA
+
+    subgraph INGEST[Data Ingestion and Versioning]
+        C1[Download or collect documents]
+        C2[Store raw files]
+        C3[Record metadata:<br/>PMID, DOI, year, journal, authors]
+        C4[Version control corpus and ontology releases]
+        C5[Create document IDs and sentence IDs]
+    end
+
+    DATA --> C1 --> C2 --> C3 --> C4 --> C5
+
+    subgraph DOCAI[Document AI Parsing]
+        D1[Parse XML/HTML directly when available]
+        D2[Parse PDFs with GROBID/PyMuPDF-like tools]
+        D3[Extract structure:<br/>title, abstract, introduction,<br/>methods, results, discussion]
+        D4[Extract tables]
+        D5[Extract figure captions]
+        D6[Remove references/bibliography noise<br/>or mark it separately]
+    end
+
+    INGEST --> DOCAI
+
+    subgraph PREPROCESS[Section-aware Preprocessing]
+        E1[Sentence splitting]
+        E2[Tokenization]
+        E3[Abbreviation detection<br/>example: tumor necrosis factor alpha = TNF-alpha]
+        E4[Section label attached to every sentence]
+        E5[Chunk creation for retrieval<br/>sentence, paragraph, section chunks]
+        E6[Metadata attached to chunks:<br/>paper ID, section, sentence ID, table/caption ID]
+    end
+
+    DOCAI --> PREPROCESS
+
+    subgraph EXTRACT[Biomedical Extraction Models]
+        F1[Named Entity Recognition<br/>PubMedBERT/BioBERT token classifier]
+        F2[Entity types:<br/>gene, protein, disease, drug,<br/>mutation, phenotype, pathway,<br/>species, cell type, method]
+        F3[Entity Linking / Normalization<br/>map mentions to UMLS, MeSH,<br/>NCBI Gene, UniProt, GO, HGNC]
+        F4[Relation Extraction<br/>A interacts with B,<br/>drug treats disease,<br/>mutation associated with phenotype]
+        F5[Event Extraction<br/>trigger + agent + target + condition + method]
+        F6[Negation Detection<br/>not/no/failed to]
+        F7[Speculation Detection<br/>may/might/suggests/possible]
+        F8[Evidence Classification<br/>experimental result, method,<br/>background, review, speculative,<br/>negative result]
+    end
+
+    PREPROCESS --> EXTRACT
+
+    subgraph QUALITY[Ontology-Grounded Validation and Cleaning]
+        G1[Schema constraints:<br/>Drug treats Disease is valid;<br/>Disease phosphorylates Protein is invalid]
+        G2[Duplicate merging:<br/>same entity/relation from multiple papers]
+        G3[Conflict detection:<br/>one paper supports, another negates]
+        G4[Confidence calibration:<br/>model probability becomes usable confidence]
+        G5[Evidence provenance check:<br/>every fact must link to source sentence/table/caption]
+    end
+
+    EXTRACT --> QUALITY
+
+    subgraph GRAPH[Evidence-aware Knowledge Graph]
+        H1[Nodes:<br/>Gene, Protein, Disease, Drug,<br/>Mutation, Species, Pathway,<br/>Paper, Sentence, Method]
+        H2[Edges:<br/>INTERACTS_WITH, INHIBITS,<br/>ACTIVATES, CAUSES, TREATS,<br/>ASSOCIATED_WITH, MENTIONED_IN,<br/>SUPPORTED_BY]
+        H3[Every edge stores:<br/>source sentence, paper ID, section,<br/>evidence type, confidence,<br/>negation/speculation status]
+        H4[Storage options:<br/>Neo4j property graph or RDF/SPARQL]
+    end
+
+    QUALITY --> GRAPH
+
+    subgraph RETRIEVE[Hybrid Retrieval Layer]
+        I1[BM25 keyword search<br/>good for exact names like BRCA1, EGFR, rpoB]
+        I2[Dense vector search<br/>semantic similarity over chunks]
+        I3[Graph retrieval<br/>neighbors, paths, relation queries]
+        I4[Ontology expansion<br/>synonyms and database IDs improve recall]
+        I5[Cross-encoder reranker<br/>query + passage/fact relevance scoring]
+        I6[Final evidence bundle:<br/>text chunks + graph facts + source sentences]
+    end
+
+    GRAPH --> RETRIEVE
+    PREPROCESS --> RETRIEVE
+
+    subgraph GRAPRAG[GraphRAG / Biomedical QA]
+        J1[User asks question:<br/>What genes interact with BRCA1 in DNA repair?]
+        J2[Question analysis:<br/>detect entities, intent, relation type]
+        J3[Retrieve graph facts and paper passages]
+        J4[Filter by evidence quality:<br/>prefer Results/experimental evidence,<br/>avoid unsupported speculation]
+        J5[LLM generates answer using retrieved evidence only]
+        J6[Answer includes citations/evidence:<br/>source sentence, paper ID, confidence]
+    end
+
+    RETRIEVE --> GRAPRAG
+
+    subgraph VERIFY[Hallucination and Citation Checking]
+        K1[Claim extraction from generated answer]
+        K2[Check every claim against retrieved evidence]
+        K3[Check citation support:<br/>does cited sentence actually support claim?]
+        K4[Flag unsupported claims]
+        K5[Uncertainty-aware response:<br/>strong evidence, weak evidence,<br/>conflicting evidence, no evidence found]
+    end
+
+    GRAPRAG --> VERIFY
+
+    subgraph CURATOR[Curator Dashboard]
+        L1[Display original sentence/table/caption]
+        L2[Show extracted entities and normalized IDs]
+        L3[Show proposed relations/events]
+        L4[Show evidence type, confidence,<br/>negation/speculation flags]
+        L5[Human actions:<br/>accept, reject, edit relation,<br/>fix entity ID, mark uncertain]
+    end
+
+    VERIFY --> CURATOR
+
+    subgraph ACTIVE[Active Learning Feedback Loop]
+        M1[Select uncertain/high-impact predictions]
+        M2[Send to curator first]
+        M3[Save human corrections]
+        M4[Retrain/fine-tune NER, linker,<br/>relation, event, evidence models]
+        M5[Improve future extraction and QA]
+    end
+
+    CURATOR --> ACTIVE
+    ACTIVE --> EXTRACT
+
+    subgraph EVAL[Evaluation Layer]
+        N1[NER F1]
+        N2[Entity linking accuracy]
+        N3[Relation/event extraction F1]
+        N4[Evidence classification F1]
+        N5[Retrieval metrics:<br/>Recall@K, MRR, nDCG]
+        N6[Graph quality:<br/>valid edges, duplicate rate,<br/>evidence coverage]
+        N7[QA quality:<br/>answer correctness, citation accuracy,<br/>hallucination rate, faithfulness]
+        N8[Human workflow:<br/>curator time saved,<br/>correction rate, agreement]
+    end
+
+    VERIFY --> EVAL
+    ACTIVE --> EVAL
+
+    subgraph CONTRIBUTION[Modern Research Contribution]
+        O1[2008 vision:<br/>connect literature, databases, curators, users]
+        O2[Modern upgrade:<br/>biomedical Transformers + LLMs]
+        O3[Evidence-aware knowledge graph]
+        O4[GraphRAG with citation checking]
+        O5[Human-in-the-loop curation and active learning]
+        O6[System-level evaluation beyond simple F1]
+    end
+
+    EVAL --> CONTRIBUTION
